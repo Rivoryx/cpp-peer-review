@@ -7,7 +7,7 @@
 
 class Book {
 public:
-    Book();
+    Book(size_t);
     void Read(int reader_id, int page_num);
     double Cheer(int reader_id);
 private:
@@ -18,8 +18,8 @@ private:
     std::unordered_map<int, int> index_; //Индекс читателей. Ключ - айди читателя, значение - его индекс в векторе читателей
 };
 
-Book::Book() {
-    page_stats_.resize(MAX_PAGE_SIZE + 1);
+Book::Book(size_t pages) {
+    page_stats_.resize(pages + 1);
 }
 
 void Book::Read(int reader_id, int page_num) {
@@ -91,7 +91,8 @@ void ParseInput(Book& book, std::istream& in = std::cin, std::ostream& out = std
 }
 
 int main() {
-    Book book;
+    size_t MAX_PAGE_AMOUNT = 1000;
+    Book book(MAX_PAGE_AMOUNT);
     ParseInput(book);
     return 0;
 }
