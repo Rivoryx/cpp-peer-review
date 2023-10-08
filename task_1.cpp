@@ -1,92 +1,74 @@
+#include <iomanip> //std::setprecision
 #include <iostream>
-#include <sstream>
-#include <vector>
+#include <numeric> //std::accumulate
 #include <string>
-#include <algorithm>
-#include <numeric>
-#include <iomanip>
+#include <unordered_map>
+#include <vector>
 
 class Book {
 public:
-    int GetReadersAmount() const noexcept { return readers_amount_; }
+    Book();
     void Read(int reader_id, int page_num);
-    void Cheer(int reader_id, std::ostream& out = std::cout);
+    double Cheer(int reader_id);
 private:
-    std::vector<int> readers_; //Индекс читателей. Индексы вектора - айди читателей, значение - кол-во прочитанных страниц
-    std::vector<int> page_stats_; //Индекс страниц. Индексы вектора - номер страницы, значение - кол-во читателей на этой странице в данный момент
+    size_t MAX_PAGE_SIZE = 1000;
     int readers_amount_ = 0; //Общее кол-во читателей книги
-
-    //Функции проверяют, не выходим ли мы за пределы индексов, если да, то увеличивает размер индексов
-    void CheckReadersSize(size_t);
-    void CheckPageStatsSize(size_t);
+    std::vector<int> readers_; //Читатели книги. Тут хранится текущая страница каждого читателя.
+    std::vector<int> page_stats_; //Индекс страниц. Индексы вектора - номер страницы, значение - кол-во читателей на этой странице в данный момент
+    std::unordered_map<int, int> index_; //Индекс читателей. Ключ - айди читателя, значение - его индекс в векторе читателей
 };
 
-void Book::CheckReadersSize(size_t size) {
-    if (readers_.size() <= size) {
-        readers_.resize(size + 1);
-    }
-}
-
-void Book::CheckPageStatsSize(size_t size) {
-    if (page_stats_.size() <= size) {
-        page_stats_.resize(size + 1);
-    }
+Book::Book() {
+    page_stats_.resize(MAX_PAGE_SIZE + 1);
 }
 
 void Book::Read(int reader_id, int page_num) {
-    //Проверяем, не выходят ли reader_id и page_num за пределы наших индексов
-    CheckReadersSize(reader_id);
-    CheckPageStatsSize(page_num);
-
-    //Меняем текущую страницу у читателя.
-    //Если она была не нулевой(читатель первый раз взял книгу), 
-    //в индексе страниц уменьшаем старое значение на единицу
-    int& prev_page = page_stats_[readers_[reader_id]];
-    if (prev_page > 0) {
-        prev_page -= 1;
+    if (!index_.count(reader_id)) {
+        //Если это новый читатель, увеличиваем общее число читателей, добавляем его в индексы
+        index_[reader_id] = readers_amount_++;
+        readers_.push_back(page_num);
     }
-    //Прибавляем к новому значению единицу
+    else {
+        //Если не новый, то меняем текущую страницу у читателя.
+        //Если она была не нулевой(читатель первый раз взял книгу), 
+        //в индексе страниц уменьшаем старое значение на единицу
+        int& prev_page = page_stats_[readers_[index_.at(reader_id)]];
+        if (prev_page > 0) {
+            prev_page -= 1;
+        }
+    }
+    //Прибавляем к новой текущей странице единицу
     page_stats_[page_num] += 1;
 
-    //Если до этого у читателя было прочитано 0 страниц, значит это новый читатель
-    //увеличиваем значение читателей на 1
-    if (readers_[reader_id] == 0) {
-        readers_amount_ += 1;
-    }
-
     //Обновляем индекс читателей
-    readers_[reader_id] = page_num;
+    readers_[index_.at(reader_id)] = page_num;
 }
 
-void Book::Cheer(int reader_id, std::ostream& out) {
-    //Проверяем, не выходит ли reader_id за пределы индекса читателей
-    CheckReadersSize(reader_id);
-    //Новый читатель, для него не вызывался READ, выводим 0
-    if (readers_[reader_id] == 0) {
-        out << 0 << std::endl;
+double Book::Cheer(int reader_id) {
+    if (index_.count(reader_id) == 0) {
+        return 0;
+    }
+    else if (readers_amount_ == 1) {
+        return 1;
     }
     else {
         double accum = 0;
         //Считаем кол-во людей, прочитавших менее текущего читателя
         //Смотрим от 0 страницы до текущей страницы (readers_[reader_id])
-        accum = std::accumulate(page_stats_.begin(), page_stats_.begin() + readers_[reader_id], 0.0);
-        if (readers_amount_ == 1) {
-            //Если это единственный читатель
-            out << 1 << std::endl;
-        }
-        else if (accum == 0) {
+        accum = std::accumulate(page_stats_.begin(), page_stats_.begin() + readers_[index_.at(reader_id)], 0.0);
+        if (accum == 0) {
             //Если никто не прочитал меньше него
-            out << 0 << std::endl;
+            return 0;
         }
         else {
-            out << std::setprecision(6);
-            out << accum / (GetReadersAmount() - 1) << std::endl;
+            return accum / (readers_amount_ - 1);
         }
     }
 }
 
-void ParseInput(Book& book, std::istream& in = std::cin) {
+void ParseInput(Book& book, std::istream& in = std::cin, std::ostream& out = std::cout) {
     using namespace std::literals;
+    out << std::setprecision(6);
     size_t requests_amount = 0;
     in >> requests_amount;
     for (size_t i = 0; i < requests_amount; ++i) {
@@ -95,7 +77,7 @@ void ParseInput(Book& book, std::istream& in = std::cin) {
         if (command == "CHEER"s) {
             int reader_id = 0;
             in >> reader_id;
-            book.Cheer(reader_id);
+            out << book.Cheer(reader_id) << std::endl;;
         }
         else if (command == "READ"s) {
             int reader_id = 0, page_num = 0;
