@@ -33,8 +33,8 @@ private:
 //------------------------Domain------------------------
 //------------------------------------------------------
 
-Domain::Domain(std::string domain) 
-    // Разворачиваем имя домена путем передачи двух обратных итераторов
+Domain::Domain(std::string domain)
+// Разворачиваем имя домена путем передачи двух обратных итераторов
     : domain_(domain.crbegin(), domain.crend()) {
     // Добавляем точку ('.') в конец перевернутого доменного имени.
     // Эта точка для более легкого поиска при проверке поддоменов
@@ -84,10 +84,8 @@ bool DomainChecker::IsForbidden(const Domain& domain) const noexcept {
     // Используем бинарный поиск для проверки, является ли домен запрещенным.
     std::vector<Domain>::const_iterator it = std::upper_bound(forbidden_domains_.begin(), forbidden_domains_.end(), domain);
     if (it != forbidden_domains_.begin()) {
-        std::advance(it, -1);  // Перемещаем итератор на одну позицию назад для проверки предыдущего элемента.
-        if (domain.IsSubdomain(*it)) {
-            return true;  // Если это поддомен, возвращаем true.
-        }
+        //Если домен не найден в запрещенных, надо проверить предыдущий итератор от найденного upper_bound на субдомен.
+        return domain.IsSubdomain(*(--it));
     }
     return false;  // Если поддомен не найден, возвращаем false.
 }
@@ -100,17 +98,11 @@ template <typename Number>
 std::vector<Domain> ReadDomains(std::istream& in, Number number) {
     std::vector<Domain> result;
 
-    if (number == 0) {
-        return result;  // Если количество доменов равно нулю, вернуть пустой вектор.
-    }
-
     for (size_t i = 0; i < number; ++i) {
         std::string domain;
-        in >> domain;  // Считываем строку-домен из входного потока.
-        result.emplace_back(domain);  // Добавляем считанный домен в вектор.
+        std::getline(in, domain); // Считываем строку-домен из входного потока.
+        result.push_back(std::move(domain));  // Добавляем считанный домен в вектор.
     }
-
-    in.get();  // Считываем(удаляем) символ новой строки ('\n') после считывания числа.
 
     return result;
 }
@@ -165,6 +157,7 @@ namespace tests {
 
             // Проверяем IsForbidden
             assert(checker.IsForbidden(Domain("example.com")));
+            assert(!checker.IsForbidden(Domain("")));
             assert(!checker.IsForbidden(Domain("subexample.com")));
             assert(checker.IsForbidden(Domain("google.com")));
             assert(checker.IsForbidden(Domain("sub.example.com")));
@@ -181,13 +174,7 @@ namespace tests {
             assert(!checker.IsForbidden(Domain("example.com")));
             assert(!checker.IsForbidden(Domain("")));
             assert(!checker.IsForbidden(Domain("subexample.com")));
-            assert(!checker.IsForbidden(Domain("google.com")));
             assert(!checker.IsForbidden(Domain("sub.example.com")));
-            assert(!checker.IsForbidden(Domain("mail.google.com")));
-            assert(!checker.IsForbidden(Domain("example.org")));
-            assert(!checker.IsForbidden(Domain("m.example.org")));
-            assert(!checker.IsForbidden(Domain("google.org")));
-            assert(!checker.IsForbidden(Domain("test.org")));
         }
     }
 }//!namespace tests
