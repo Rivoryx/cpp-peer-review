@@ -1,6 +1,12 @@
 #include <array>
 #include <stdexcept>
 
+enum class TimeUnit {
+    Hour,
+    Minute,
+    Second
+};
+
 // Проверка, является ли указанный год допустимым
 void CheckYearValidity(int year) {
     if (year < 1 || year > 9999) {
